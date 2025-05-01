@@ -61,7 +61,9 @@ func (s *ServerPool) checkBackend(b *Backend) {
 		b.SetAlive(false)
 		return
 	}
-	conn.Close()
+	if err := conn.Close(); err != nil {
+		return
+	}
 	log.Printf("Health check SUCCESS for %s", b.URL.Host)
 	b.SetAlive(true)
 }

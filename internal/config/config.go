@@ -8,8 +8,12 @@ import (
 )
 
 type Config struct {
-	Port     string   `yaml:"port"`
-	Backends []string `yaml:"backends"`
+	Port      string   `yaml:"port"`
+	Backends  []string `yaml:"backends"`
+	RateLimit struct {
+		RPS   int `yaml:"rps"`
+		Burst int `yaml:"burst"`
+	} `yaml:"rate_limit"`
 }
 
 func LoadConfig(path string) (*Config, error) {

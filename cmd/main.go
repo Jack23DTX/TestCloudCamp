@@ -1,8 +1,10 @@
 package main
 
 import (
+	"TestCloudCamp/internal/ratelimit"
 	"context"
 	"fmt"
+	"golang.org/x/time/rate"
 	"log"
 	"net/http"
 	"os"
@@ -15,16 +17,14 @@ import (
 )
 
 func main() {
+	// Загрузка конфига
 	cfg, err := config.LoadConfig("./config.yaml")
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	// тут будет запуск серверов из бэкендов (если они локальные)
-	//lb := loadBalancer
-
+	// Инициализация бэкендов и HealthChecks
 	var backends []*balancer.Backend
-
 	for _, addr := range cfg.Backends {
 		u, err := balancer.NewBackend(addr)
 		if err != nil {
@@ -39,13 +39,23 @@ func main() {
 		pool.StartHealthChecks(5 * time.Second)
 	}()
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
+	// Инициализируем rate limiter
+	r := rate.Limit(cfg.RateLimit.RPS)
+	b := cfg.RateLimit.Burst
+	rm := ratelimit.NewIPRateLimiter(r, b)
 
+	// Создаём ReverseProxy и оборачиваем в middleware
+	proxy := server.NewReverseProxy(pool)
+	handler := rm.Middleware(proxy)
+
+	// Graceful Shutdown
 	ser := &http.Server{
 		Addr:    cfg.Port,
-		Handler: server.NewReverseProxy(pool),
+		Handler: handler,
 	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
 
 	go func() {
 		<-ctx.Done()

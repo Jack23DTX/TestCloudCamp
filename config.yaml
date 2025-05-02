@@ -1,8 +1,8 @@
 port: ":8080"
 backends:
-  - "http://localhost:8081"
-  - "http://localhost:8082"
-  - "http://localhost:8083"
+  - "http://host.docker.internal:8081"
+  - "http://host.docker.internal:8082"
+  - "http://host.docker.internal:8083"
 rate_limit:
   rps: 5
   burst: 10
